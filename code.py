@@ -65,10 +65,13 @@ class PriorityQueue:
     # returns the second smallest priority value in the heap
     # used in bidirectional so I can peek and still access the next lowest value
     def secondMin(self):
-        head,weight = PriorityQueue.pop(self)
-        nextHead,nextWeight = PriorityQueue.head(self)
-        PriorityQueue.add(self,head,weight)
-        return nextWeight
+        try:
+            head,weight = PriorityQueue.pop(self)
+            nextHead,nextWeight = PriorityQueue.head(self)
+            PriorityQueue.add(self,head,weight)
+            return nextWeight
+        except:
+            return float('inf')
 
 
 # You do not need to implement anything in this section above.
@@ -120,11 +123,29 @@ def dijkstra(n, edges, source, target=None):
 
 # TODO: Implement part (c).
 def bidirectional(n, edges, source, target):
-    forward = PriorityQueue()
-    backward = PriorityQueue()
-    dist_for, dist_back, parent_for, parent_back = {}, {}, {}, {}
-    S_for, S_back = [], []
+    q, q_back = PriorityQueue(), PriorityQueue()
+    S, S_back = [], []
+    dist, parent = {}, {}
+    dist_back, parent_back = {}, {}
+    dist[source], dist_back[target] = 0, 0
+    parent[source], parent_back[target] = None, None
     infinity = float('inf')
+
+    # build the heap
+    for v in xrange(0,n):
+        if v == source:
+            PriorityQueue.add(q, v, dist[v])
+            PriorityQueue.add(q_back, v, infinity)
+            dist_back[v] = infinity
+        elif v == target:
+            PriorityQueue.add(q, v, infinity)
+            PriorityQueue.add(q_back, v, dist_back[v])
+            dist[v] = infinity
+        else:
+            PriorityQueue.add(q, v, infinity)
+            PriorityQueue.add(q_back, v, infinity)
+            dist[v]=infinity
+            dist_back[v]=infinity
 
     # build dictionary of edges to a vertex (for use in backward movement)
     edgesTo = {}
@@ -135,97 +156,45 @@ def bidirectional(n, edges, source, target):
             else:
                 edgesTo[v] = [(u,weight)]
 
-    dist_for[source] = 0
-    dist_back[target] = 0
-    parent_for[source] = None
-    parent_back[target] = None
-    # build the heap
-    for v in xrange(0,n):
-        if v == source:
-            PriorityQueue.add(forward, v, 0)
-            PriorityQueue.add(backward, v, infinity)
-            dist_back[v]=infinity
-        elif v == target:
-            PriorityQueue.add(backward, v, 0)
-            PriorityQueue.add(forward, v, infinity)
-            dist_for[v]=infinity
+    while not PriorityQueue.empty(q) and not PriorityQueue.empty(q_back):
+        if PriorityQueue.head(q)[1] <= PriorityQueue.head(q_back)[1]:
+            S,q,dist,parent = iterate_dijkstra(n, edges, source, target, S, q, dist, parent)
+            if target in S:
+                par = parent[target]
+                output = [target]
+                while par != None:
+                    output.insert(0,par)
+                    par = parent[par]
+                return (output,dist[target]) 
         else:
-            PriorityQueue.add(forward, v, infinity)
-            PriorityQueue.add(backward, v, infinity)
-            dist_for[v]=infinity
-            dist_back[v]=infinity
+            S_back, q_back, dist_back, parent_back = iterate_dijkstra(n, edgesTo, target, source, S_back, q_back, dist_back, parent_back)
+            if source in S_back:
+                par = parent_back[source]
+                output = [source]
+                while par != None:
+                    output.apped(par)
+                    par = parent[par]
+                return (output,dist_back[source]) 
 
-    bestguess = infinity
-    while not PriorityQueue.empty(forward) and not PriorityQueue.empty(backward):
-        a,weight_a = PriorityQueue.head(forward)
-        b,weight_b = PriorityQueue.head(backward)
+    print "queue ran out", PriorityQueue.empty(q), PriorityQueue.empty(q_back)
 
-        for v,weight in edges[a]:
-            if v not in S_for and v in S_back: # intersection of frontiers
-                if bestguess > dist_for[a] + weight + dist_back[v]:
-                    bestguess = dist_for[a] + weight + dist_back[v]
-                if bestguess < PriorityQueue.secondMin(forward) + weight_b:
-                    path = [a]
-                    par = parent_for[a]
-                    while par != None:
-                        path.insert(0,par)
-                        par = parent_for[par]
-                    path.append(v)
-                    par = parent_back[v]
-                    while par != None:
-                        path.append(par)
-                        par = parent_back[par]
-                    print "A"
-                    return (path,bestguess)
-            distance = dist_for[a] + weight
-            if distance < dist_for[v]:
-                dist_for[v] = distance
-                parent_for[v] = a
-                PriorityQueue.decreasekey(forward,v,distance)
-
-        for v,weight in edgesTo[b]: 
-            if v not in S_back and v in S_for: # intersection of frontiers
-                if bestguess > dist_for[v] + weight + dist_back[b]:
-                    bestguess = dist_for[v] + weight + dist_back[b]
-                if bestguess < weight_a + PriorityQueue.secondMin(backward):
-                    path = [b]
-                    par = parent_for[b]
-                    while par != None:
-                        path.insert(0,par)
-                        par = parent_for[par]
-                    par = parent_back[b]
-                    while par != None:
-                        path.append(par)
-                        par = parent_back[par]
-                    print "B"
-                    return (path,bestguess)
-            distance = dist_back[b] + weight
-            if distance < dist_back[v]: 
-                dist_back[v] = distance
-                parent_back[v] = b 
-                PriorityQueue.decreasekey(backward,v,distance)
-
-        if PriorityQueue.secondMin(forward) <= PriorityQueue.secondMin(backward):
-            print "Popping", a, "from forward to S_for"
-            PriorityQueue.pop(forward)
-            S_for.append(a)
-            if a not in S_back: 
-                PriorityQueue.remove(backward, a)
-        else:
-            print "Popping", b, "from backward to S_back"
-            PriorityQueue.pop(backward)
-            S_back.append(b)
-            if b not in S_for: 
-                PriorityQueue.remove(forward, b)
-
-    
+# runs a single iteration of dijkstra
+def iterate_dijkstra(n, edges, source, target, S, q, dist, parent):
+    infinity = float('inf')
+    while not PriorityQueue.empty(q):
+        u,weight = PriorityQueue.pop(q)
+        for v,weight in edges[u]:
+            distance = dist[u] + weight
+            if distance < dist[v]:
+                dist[v] = distance
+                parent[v] = u
+                PriorityQueue.decreasekey(q,v,distance)
+        S.append(u)
+        return S,q,dist,parent
 
 # TODO: Implement part (d).
 def astar(locs, edges, source, target):
-    print locs[source]
-    print locs[target]
     return
-
 
     q = PriorityQueue()
     dist, parent = {}, {}
@@ -274,13 +243,13 @@ def astar(locs, edges, source, target):
 source = 9
 target = 2
 
-# edges = {0: [(1, 1.44), (4, 0.53), (8, 0.71), (5, 1.02), (9, 1.8), (2, 0.56)], 1: [(3, 0.09), (7, 2.23), (8, 1.49), (4, 1.71)], 2: [(8, 2.86), (1, 2.09), (3, 0.38), (7, 0.7), (5, 0.82), (0, 0.08), (4, 1.52), (6, 2.76)], 3: [(4, 0.37), (8, 3.6), (2, 0.6), (1, 2.96), (9, 0.05), (6, 0.69)], 4: [(7, 1.4), (1, 0.03), (5, 7.22), (6, 0.71)], 5: [], 6: [(1, 1.24), (2, 0.39), (4, 0.4), (3, 0.89), (9, 0.01), (0, 0.09)], 7: [(1, 1.38), (5, 1.64), (6, 0.25), (9, 2.19)], 8: [(7, 0.9), (1, 1.25), (9, 0.64), (6, 1.64)], 9: [(7, 0.66), (6, 0.42), (1, 2.17)]}
-edges = {0: [(1, 1.06), (8, 0.9), (5, 0.14), (4, 3.1)], 1: [(2, 1.81), (5, 1.07), (8, 0.81), (6, 1.6)], 2: [(1, 2.63), (3, 0.21), (5, 0.44), (7, 0.82), (8, 0.06), (0, 0.42), (6, 1.37)], 3: [(4, 3.62), (8, 1.24), (9, 0.24), (2, 0.58), (0, 0.11)], 4: [(5, 0.02), (6, 2.16), (2, 0.44)], 5: [(9, 1.62), (2, 0.59), (3, 2.04), (4, 0.08)], 6: [(0, 0.79), (5, 0.04), (2, 0.03), (1, 0.02), (8, 1.75)], 7: [(1, 1.24), (4, 2.18), (8, 0.36), (9, 0.42), (6, 0.24), (3, 0.29)], 8: [(5, 0.2), (2, 0.13), (3, 3.49), (1, 1.0)], 9: [(2, 0.26), (3, 0.56), (0, 1.61), (1, 0.01)]}
+edges = {0: [(1, 1.44), (4, 0.53), (8, 0.71), (5, 1.02), (9, 1.8), (2, 0.56)], 1: [(3, 0.09), (7, 2.23), (8, 1.49), (4, 1.71)], 2: [(8, 2.86), (1, 2.09), (3, 0.38), (7, 0.7), (5, 0.82), (0, 0.08), (4, 1.52), (6, 2.76)], 3: [(4, 0.37), (8, 3.6), (2, 0.6), (1, 2.96), (9, 0.05), (6, 0.69)], 4: [(7, 1.4), (1, 0.03), (5, 7.22), (6, 0.71)], 5: [], 6: [(1, 1.24), (2, 0.39), (4, 0.4), (3, 0.89), (9, 0.01), (0, 0.09)], 7: [(1, 1.38), (5, 1.64), (6, 0.25), (9, 2.19)], 8: [(7, 0.9), (1, 1.25), (9, 0.64), (6, 1.64)], 9: [(7, 0.66), (6, 0.42), (1, 2.17)]}
+# edges = {0: [(1, 1.06), (8, 0.9), (5, 0.14), (4, 3.1)], 1: [(2, 1.81), (5, 1.07), (8, 0.81), (6, 1.6)], 2: [(1, 2.63), (3, 0.21), (5, 0.44), (7, 0.82), (8, 0.06), (0, 0.42), (6, 1.37)], 3: [(4, 3.62), (8, 1.24), (9, 0.24), (2, 0.58), (0, 0.11)], 4: [(5, 0.02), (6, 2.16), (2, 0.44)], 5: [(9, 1.62), (2, 0.59), (3, 2.04), (4, 0.08)], 6: [(0, 0.79), (5, 0.04), (2, 0.03), (1, 0.02), (8, 1.75)], 7: [(1, 1.24), (4, 2.18), (8, 0.36), (9, 0.42), (6, 0.24), (3, 0.29)], 8: [(5, 0.2), (2, 0.13), (3, 3.49), (1, 1.0)], 9: [(2, 0.26), (3, 0.56), (0, 1.61), (1, 0.01)]}
 
-# p1 = dijkstra(10, edges, 9, target)
-# path = bidirectional(10, edges, 9, target)
-# print p1
-# print path
+p1 = dijkstra(10, edges, 9, target)
+path = bidirectional(10, edges, 9, target)
+print p1
+print path
 
 # edges = {0: [(1, 1.06), (8, 0.9), (5, 0.14), (4, 3.1)], 1: [(2, 1.81), (5, 1.07), (8, 0.81), (6, 1.6)], 2: [(1, 2.63), (3, 0.21), (5, 0.44), (7, 0.82), (8, 0.06), (0, 0.42), (6, 1.37)], 3: [(4, 3.62), (8, 1.24), (9, 0.24), (2, 0.58), (0, 0.11)], 4: [(5, 0.02), (6, 2.16), (2, 0.44)], 5: [(9, 1.62), (2, 0.59), (3, 2.04), (4, 0.08)], 6: [(0, 0.79), (5, 0.04), (2, 0.03), (1, 0.02), (8, 1.75)], 7: [(1, 1.24), (4, 2.18), (8, 0.36), (9, 0.42), (6, 0.24), (3, 0.29)], 8: [(5, 0.2), (2, 0.13), (3, 3.49), (1, 1.0)], 9: [(2, 0.26), (3, 0.56), (0, 1.61), (1, 0.01)]}
 # p1 = dijkstra(10, edges, 9, target)
