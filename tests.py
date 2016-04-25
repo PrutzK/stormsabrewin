@@ -57,9 +57,6 @@ def run_test(input_file):
             info += " (n: " + str(n) + ", source: " + str(source) + ", target: " + str(target) + ", # edges: " + str(sum([len(edges[x]) for x in edges])) + ")"
 
             if test_type == "astar_loc":
-                print locs
-                print edges
-                print source, target
                 result = astar(locs, edges, source, target)
             elif test_type == "dijkstra_loc" or test_type == "bidirectional_loc":
                 edges_weights = {}
