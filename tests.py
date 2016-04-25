@@ -118,8 +118,6 @@ def check_test(results, output_file):
                                " does not match actual path length " +
                                str(results[1])]
             if not len(steps) == len(results[0]):
-                print steps
-                print results[0]
                 return False, ["Expected number of steps " + str(len(steps)) +
                                " does not match actual number of steps " +
                                str(len(results[0]))]
@@ -136,7 +134,7 @@ def main():
     count =0
     while count == 0:
         count = 1
-    for test_num in xrange(28, num_cases + 1):
+    for test_num in xrange(1, num_cases + 1):
         test_path = "cases/" + str(test_num)
         input_file = test_path + ".in"
         info, results = run_test(input_file)
